@@ -1,0 +1,199 @@
+---
+title: 'Analysing survival curves: Real life data'
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  #tidy.opts=list(width.cutoff=60),
+  #tidy=TRUE,
+  fig.align = 'center',
+  warning=FALSE,
+  message = FALSE
+)
+```
+
+### Importance of accounting for pseudoreplication is analysing virulence assays
+
+### Outline
+
+Scientists like to know how virulent things they are studying are. In terms of bacteria and fungi and viruses, a common way of tracking. Or when an experimental treatment has resulted in a change in virulence.
+
+Virulence assays using animal models (such as the waxmoth larvae _Galleria melonella_) have become increasingly popular for studying virulence. Generally these assays involve injecting bacteria into the many insects and then tracking death through time.
+
+It is common practice to inject the same bacteria into multiple insects. There are usually multiple bacteria that are linked to an individual replicate and multiple replicates that are linked to the treatment. Our overally question is interested in whether there are differences between treatments, meaning that we need to account for pseudoreplication of multiple insect larvae being injected with the same bacteria.
+
+### Analysis options
+
+- survival curve analysis
+- average over multiple Galleria injected with the same bacteria. 
+    - could calculate proportion dead at the end of the experiment
+    - calculate time at which at least half are dead (LT_{50}, but this requires measuring at many time points to accurately measure this).
+
+### Examples
+
+First we will load in the packages we will use.
+
+```{r package_load, message=FALSE}
+# load in packages
+library(survival)
+library(survminer)
+library(coxme)
+library(tidyverse)
+library(rstanarm)
+library(tidybayes)
+library(patchwork)
+library(cowplot)
+```
+
+### Real life example
+
+This data comes from a PhD student looking at whether the presence or absence of lime and shaking results in the evolution of increased virulence.
+
+```{r data_load}
+# set up data
+d <- read.csv('../data/real_life_data.csv')
+
+```
+
+The column definitions are as follows:
+
+- sample = clone
+- time_of_death = time death was recorded
+- treat1 = lime or no lime
+- treat2 = evolved static or shaken
+- status = dead (1) or alive (0)
+
+Doing a cox proportional hazards model without random effects is simple.
+
+```{r cox_model}
+# do coxph regression and model simplification
+model <- coxph(Surv(time_of_death, status) ~ treat1*treat2, data=d)
+model2 <- coxph(Surv(time_of_death, status) ~ treat1 + treat2, data=d)
+model3 <- coxph(Surv(time_of_death, status) ~ treat2, data=d)
+model4 <- coxph(Surv(time_of_death, status) ~ treat1, data=d)
+model5 <- coxph(Surv(time_of_death, status) ~ 1, data=d)
+# anova(model, model2)
+# anova(model2, model3)
+# anova(model2, model4)
+anova(model3, model5)
+# anova(model4, model5)
+model3 # model three is the best model
+```
+
+The survival curves can be visualised using the `survfit()` methods.
+
+```{r cox_model_plot, fig.height=10, fig.width=8}
+# create predictions
+model_preds <- survfit(Surv(time_of_death, status)~treat2, data=d)
+# summary(model_preds)
+
+# plot survival curve
+p1 <- ggsurvplot(model_preds, data = d, legend = "right", legend.title = "Treatment", ggtheme = theme_bw(), conf.int = TRUE, linetype = c(1), palette = "Paired2", censor = FALSE, legend.labs = c('shaken', 'static'), xlab = "Time (Hours)", ylab = "Proportion Alive", font.y = c(15), font.x = c(15), font.tickslab = c(15), conf.int.alpha = 0.15)
+p2 <- ggforest(model3, data = d, main = "Treatment impacts on Pseudomonas virulence", fontsize = 1)
+
+p1$plot + p2 + plot_layout(ncol = 1)
+```
+
+However, there is pseudoreplication in this dataset, as multiple Galleria are injected into with the same bacteria. We can account for this using a random effects model. This can be implemented using _coxme_.
+
+```{r coxme_model}
+# originally using a standard cox model
+model_me <- coxme(Surv(time_of_death, status)~treat2 + (1|clone), d)
+model_me
+model_me2 <- coxme(Surv(time_of_death, status)~1 + (1|clone), d)
+anova(model_me, model_me2)
+# predict does not really work - want to get the random effects out, a prediction for each clone
+```
+
+The model that was significant is no longer so. However, the predict methods do not really work for coxme, making visualising the effects and survival curves difficult. As a result I investigated using Bayesian methods to fit survival curves.
+
+rstanarm has a developmental branch that fits survival curves. It is difficult to install but has many benefits which make it a great way to fit survival curves.
+- fits continuous models through time
+- quanitifies uncertainty in estimates well
+- allows fixed effects to be standardised over random effects
+- allows easy manipulation of estimates to allow for custom contrasts and hazard ratio to be calculated.
+
+```{r bayes_model, message=FALSE}
+# do a bayesian analysis of this
+mod_bayes <- stan_surv(Surv(time_of_death, status) ~ treat2 + (1|clone),
+                        data = d,
+                        chains = 3,
+                        cores = 3,
+                        seed = 42,
+                        iter = 3000)
+mod_bayes
+
+```
+
+```{r bayes_hazard}
+# calculate the hazard ratio
+to_plot <- tidybayes::get_variables(mod_bayes)[1:2]
+
+# the exp() of the difference between two factors is the hazards ratio
+params_bayes <- spread_draws(mod_bayes, !!!syms(c(to_plot))) %>%
+  janitor::clean_names() %>%
+  mutate(hazard_ratio = exp(treat2static)) %>%
+  select(., hazard_ratio) %>%
+  median_qi()
+params_bayes
+# hazard ratio crosses one so no significant difference
+```
+
+We can plot these survival curves in a few different ways. First, we can predict survival curves at the treatment level and average over the random effects.
+
+```{r plot_treatment_effect, fig.height=5, fig.width=8}
+# predict survival curves at the treatment level ####
+d_preds <- select(d, treat2, clone) %>%
+  distinct() %>%
+  mutate(id = 1:n(),
+         id2 = group_indices(., treat2),
+         treat = treat2) %>%
+  nest_legacy(-c(id2, treat)) %>%
+  mutate(., preds = map(data, ~posterior_survfit(mod_bayes, newdata = .x, times = 0, standardise = TRUE, extrapolate = TRUE, dynamic = TRUE)))
+
+d_preds <- unnest(d_preds, preds) %>%
+  select(-data, treat2 = treat)
+
+# plot
+ggplot(d_preds, aes(time, median, fill = treat2)) +
+  geom_line(aes(col = treat2), show.legend = FALSE) +
+  geom_ribbon(aes(time, ymin = ci_lb, ymax = ci_ub), alpha = 0.2) +
+  theme_bw() +
+  ylim(c(0,1))
+```
+
+Second we can calculate the survival curve for each individual clone.
+
+```{r plot_random, fig.height=6, fig.width=8}
+# predict including random effects
+d_preds_random <-  select(d, treat2, clone) %>%
+  distinct() %>%
+  mutate(id = 1:n())
+d_preds_random <- posterior_survfit(mod_bayes, newdata = d_preds_random, times = 0, standardise = FALSE, extrapolate = TRUE, dynamic = TRUE) %>%
+  left_join(., d_preds_random)
+
+# plot all clones
+ggplot() +
+  geom_line(aes(time, median, col = treat2, group = interaction(clone, treat2)), d_preds_random) +
+  geom_ribbon(aes(time, ymin = ci_lb, ymax = ci_ub, fill = treat2), d_preds_random, alpha = 0.2) +
+  theme_bw() +
+  ylim(c(0,1)) +
+  facet_wrap(~clone, ncol = 6)
+```
+
+And we can overlay the clone-level curves over the treatment-level estimated survival curves.
+
+```{r plot_random2, fig.height = 5, fig.width = 8}
+# plot clones over treatment effect
+ggplot(d_preds, aes(time, median, fill = treat2)) +
+  geom_line(aes(col = treat2), show.legend = FALSE, size = 2) +
+  geom_ribbon(aes(time, ymin = ci_lb, ymax = ci_ub), alpha = 0.2) +
+  geom_line(aes(col = treat2, group = interaction(clone, treat2)), d_preds_random, alpha = 0.5) +
+  theme_bw() +
+  ylim(c(0,1))
+```

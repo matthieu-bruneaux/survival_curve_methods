@@ -1,0 +1,481 @@
+clone,time_of_death,treat1,treat2,status
+a1,13,no lime,static,1
+a1,13,no lime,static,1
+a1,13,no lime,static,1
+a1,17,no lime,static,1
+a1,17,no lime,static,1
+a1,18,no lime,static,1
+a1,22,no lime,static,1
+a1,41,no lime,static,1
+a1,41,no lime,static,1
+a1,41,no lime,static,1
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a1,41,no lime,static,0
+a2,13,no lime,static,1
+a2,15,no lime,static,1
+a2,17,no lime,static,1
+a2,18,no lime,static,1
+a2,20,no lime,static,1
+a2,21,no lime,static,1
+a2,24,no lime,static,1
+a2,41,no lime,static,1
+a2,41,no lime,static,1
+a2,41,no lime,static,1
+a2,41,no lime,static,1
+a2,41,no lime,static,1
+a2,41,no lime,static,1
+a2,41,no lime,static,0
+a2,41,no lime,static,0
+a2,41,no lime,static,0
+a2,41,no lime,static,0
+a2,41,no lime,static,0
+a2,41,no lime,static,0
+a2,41,no lime,static,0
+a3,18,no lime,static,1
+a3,18,no lime,static,1
+a3,18,no lime,static,1
+a3,20,no lime,static,1
+a3,20,no lime,static,1
+a3,41,no lime,static,1
+a3,41,no lime,static,1
+a3,41,no lime,static,1
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a3,41,no lime,static,0
+a4,13,no lime,static,1
+a4,13,no lime,static,1
+a4,13,no lime,static,1
+a4,13,no lime,static,1
+a4,13,no lime,static,1
+a4,13,no lime,static,1
+a4,14,no lime,static,1
+a4,14,no lime,static,1
+a4,14,no lime,static,1
+a4,14,no lime,static,1
+a4,15,no lime,static,0
+a4,15,no lime,static,0
+a4,17,no lime,static,0
+a4,17,no lime,static,0
+a4,17,no lime,static,0
+a4,18,no lime,static,0
+a4,18,no lime,static,0
+a4,19,no lime,static,0
+a4,19,no lime,static,0
+a4,19,no lime,static,0
+a5,13,no lime,static,1
+a5,13,no lime,static,1
+a5,13,no lime,static,1
+a5,13,no lime,static,1
+a5,13,no lime,static,1
+a5,13,no lime,static,1
+a5,13,no lime,static,1
+a5,13,no lime,static,1
+a5,14,no lime,static,1
+a5,14,no lime,static,1
+a5,14,no lime,static,1
+a5,16,no lime,static,1
+a5,17,no lime,static,1
+a5,17,no lime,static,1
+a5,19,no lime,static,1
+a5,19,no lime,static,1
+a5,19,no lime,static,1
+a5,19,no lime,static,1
+a5,20,no lime,static,1
+a5,20,no lime,static,0
+a6,13,no lime,static,1
+a6,13,no lime,static,1
+a6,16,no lime,static,1
+a6,17,no lime,static,1
+a6,19,no lime,static,1
+a6,19,no lime,static,1
+a6,19,no lime,static,1
+a6,20,no lime,static,1
+a6,21,no lime,static,1
+a6,21,no lime,static,1
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+a6,23,no lime,static,0
+b1,13,no lime,shaken,1
+b1,13,no lime,shaken,1
+b1,14,no lime,shaken,1
+b1,20,no lime,shaken,1
+b1,20,no lime,shaken,1
+b1,21,no lime,shaken,1
+b1,21,no lime,shaken,1
+b1,22,no lime,shaken,1
+b1,22,no lime,shaken,1
+b1,41,no lime,shaken,1
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b1,41,no lime,shaken,0
+b2,13,no lime,shaken,1
+b2,13,no lime,shaken,1
+b2,13,no lime,shaken,1
+b2,13,no lime,shaken,1
+b2,19,no lime,shaken,1
+b2,20,no lime,shaken,1
+b2,20,no lime,shaken,1
+b2,20,no lime,shaken,1
+b2,21,no lime,shaken,1
+b2,41,no lime,shaken,1
+b2,41,no lime,shaken,1
+b2,41,no lime,shaken,1
+b2,41,no lime,shaken,0
+b2,41,no lime,shaken,0
+b2,41,no lime,shaken,0
+b2,41,no lime,shaken,0
+b2,41,no lime,shaken,0
+b2,41,no lime,shaken,0
+b2,41,no lime,shaken,0
+b2,41,no lime,shaken,0
+b3,13,no lime,shaken,1
+b3,14,no lime,shaken,1
+b3,14,no lime,shaken,1
+b3,14,no lime,shaken,1
+b3,14,no lime,shaken,1
+b3,15,no lime,shaken,1
+b3,16,no lime,shaken,1
+b3,17,no lime,shaken,1
+b3,18,no lime,shaken,1
+b3,18,no lime,shaken,1
+b3,19,no lime,shaken,1
+b3,19,no lime,shaken,1
+b3,19,no lime,shaken,1
+b3,20,no lime,shaken,1
+b3,21,no lime,shaken,1
+b3,22,no lime,shaken,1
+b3,24,no lime,shaken,1
+b3,41,no lime,shaken,1
+b3,41,no lime,shaken,1
+b3,41,no lime,shaken,1
+b4,13,no lime,shaken,1
+b4,13,no lime,shaken,1
+b4,14,no lime,shaken,1
+b4,15,no lime,shaken,1
+b4,15,no lime,shaken,1
+b4,16,no lime,shaken,1
+b4,17,no lime,shaken,1
+b4,17,no lime,shaken,1
+b4,18,no lime,shaken,1
+b4,18,no lime,shaken,1
+b4,18,no lime,shaken,1
+b4,18,no lime,shaken,1
+b4,18,no lime,shaken,1
+b4,19,no lime,shaken,1
+b4,20,no lime,shaken,1
+b4,21,no lime,shaken,1
+b4,23,no lime,shaken,0
+b4,23,no lime,shaken,0
+b4,23,no lime,shaken,0
+b4,23,no lime,shaken,0
+b5,13,no lime,shaken,1
+b5,13,no lime,shaken,1
+b5,13,no lime,shaken,1
+b5,14,no lime,shaken,1
+b5,14,no lime,shaken,1
+b5,14,no lime,shaken,1
+b5,14,no lime,shaken,1
+b5,14,no lime,shaken,1
+b5,14,no lime,shaken,1
+b5,14,no lime,shaken,1
+b5,16,no lime,shaken,1
+b5,16,no lime,shaken,1
+b5,17,no lime,shaken,1
+b5,18,no lime,shaken,1
+b5,18,no lime,shaken,1
+b5,18,no lime,shaken,1
+b5,18,no lime,shaken,1
+b5,19,no lime,shaken,1
+b5,21,no lime,shaken,1
+b5,23,no lime,shaken,0
+b6,13,no lime,shaken,1
+b6,13,no lime,shaken,1
+b6,13,no lime,shaken,1
+b6,13,no lime,shaken,1
+b6,14,no lime,shaken,1
+b6,14,no lime,shaken,1
+b6,14,no lime,shaken,1
+b6,14,no lime,shaken,1
+b6,14,no lime,shaken,1
+b6,14,no lime,shaken,1
+b6,15,no lime,shaken,1
+b6,16,no lime,shaken,1
+b6,16,no lime,shaken,1
+b6,16,no lime,shaken,1
+b6,18,no lime,shaken,1
+b6,18,no lime,shaken,1
+b6,18,no lime,shaken,1
+b6,18,no lime,shaken,1
+b6,19,no lime,shaken,1
+b6,23,no lime,shaken,0
+c1,20,lime,static,1
+c1,21,lime,static,1
+c1,21,lime,static,1
+c1,21,lime,static,1
+c1,22,lime,static,1
+c1,22,lime,static,1
+c1,22,lime,static,1
+c1,41,lime,static,1
+c1,41,lime,static,1
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c1,41,lime,static,0
+c2,13,lime,static,1
+c2,17,lime,static,1
+c2,19,lime,static,1
+c2,20,lime,static,1
+c2,20,lime,static,1
+c2,21,lime,static,1
+c2,21,lime,static,1
+c2,21,lime,static,1
+c2,21,lime,static,1
+c2,22,lime,static,1
+c2,41,lime,static,1
+c2,41,lime,static,1
+c2,41,lime,static,0
+c2,41,lime,static,0
+c2,41,lime,static,0
+c2,41,lime,static,0
+c2,41,lime,static,0
+c2,41,lime,static,0
+c2,41,lime,static,0
+c2,41,lime,static,0
+c3,17,lime,static,1
+c3,17,lime,static,1
+c3,21,lime,static,1
+c3,21,lime,static,1
+c3,21,lime,static,1
+c3,22,lime,static,1
+c3,24,lime,static,1
+c3,41,lime,static,1
+c3,41,lime,static,1
+c3,41,lime,static,1
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c3,41,lime,static,0
+c4,13,lime,static,1
+c4,13,lime,static,1
+c4,13,lime,static,1
+c4,13,lime,static,1
+c4,13,lime,static,1
+c4,14,lime,static,1
+c4,14,lime,static,1
+c4,14,lime,static,1
+c4,15,lime,static,1
+c4,15,lime,static,1
+c4,16,lime,static,1
+c4,17,lime,static,1
+c4,17,lime,static,1
+c4,17,lime,static,1
+c4,17,lime,static,1
+c4,17,lime,static,1
+c4,17,lime,static,1
+c4,18,lime,static,1
+c4,19,lime,static,1
+c4,20,lime,static,1
+c5,13,lime,static,1
+c5,14,lime,static,1
+c5,14,lime,static,1
+c5,14,lime,static,1
+c5,14,lime,static,1
+c5,14,lime,static,1
+c5,16,lime,static,1
+c5,16,lime,static,1
+c5,16,lime,static,1
+c5,17,lime,static,1
+c5,17,lime,static,1
+c5,18,lime,static,1
+c5,18,lime,static,1
+c5,18,lime,static,1
+c5,18,lime,static,1
+c5,20,lime,static,1
+c5,20,lime,static,1
+c5,20,lime,static,1
+c5,20,lime,static,1
+c5,20,lime,static,1
+c6,13,lime,static,1
+c6,13,lime,static,1
+c6,14,lime,static,1
+c6,14,lime,static,1
+c6,17,lime,static,1
+c6,17,lime,static,1
+c6,17,lime,static,1
+c6,18,lime,static,1
+c6,18,lime,static,1
+c6,20,lime,static,1
+c6,20,lime,static,1
+c6,21,lime,static,1
+c6,21,lime,static,1
+c6,21,lime,static,1
+c6,21,lime,static,1
+c6,22,lime,static,1
+c6,22,lime,static,1
+c6,22,lime,static,1
+c6,23,lime,static,1
+c6,23,lime,static,1
+d1,15,lime,shaken,1
+d1,15,lime,shaken,1
+d1,15,lime,shaken,1
+d1,15,lime,shaken,1
+d1,18,lime,shaken,1
+d1,18,lime,shaken,1
+d1,19,lime,shaken,1
+d1,19,lime,shaken,1
+d1,19,lime,shaken,1
+d1,19,lime,shaken,1
+d1,20,lime,shaken,1
+d1,20,lime,shaken,1
+d1,20,lime,shaken,1
+d1,21,lime,shaken,1
+d1,21,lime,shaken,1
+d1,22,lime,shaken,1
+d1,24,lime,shaken,1
+d1,41,lime,shaken,1
+d1,41,lime,shaken,0
+d1,41,lime,shaken,0
+d2,14,lime,shaken,1
+d2,14,lime,shaken,1
+d2,17,lime,shaken,1
+d2,18,lime,shaken,1
+d2,20,lime,shaken,1
+d2,20,lime,shaken,1
+d2,20,lime,shaken,1
+d2,21,lime,shaken,1
+d2,21,lime,shaken,1
+d2,22,lime,shaken,1
+d2,22,lime,shaken,1
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d2,41,lime,shaken,0
+d3,13,lime,shaken,1
+d3,14,lime,shaken,1
+d3,14,lime,shaken,1
+d3,16,lime,shaken,1
+d3,16,lime,shaken,1
+d3,16,lime,shaken,1
+d3,17,lime,shaken,1
+d3,20,lime,shaken,1
+d3,20,lime,shaken,1
+d3,20,lime,shaken,1
+d3,20,lime,shaken,1
+d3,20,lime,shaken,1
+d3,21,lime,shaken,1
+d3,21,lime,shaken,1
+d3,22,lime,shaken,1
+d3,41,lime,shaken,1
+d3,41,lime,shaken,0
+d3,41,lime,shaken,0
+d3,41,lime,shaken,0
+d3,41,lime,shaken,0
+d4,13,lime,shaken,1
+d4,13,lime,shaken,1
+d4,13,lime,shaken,1
+d4,13,lime,shaken,1
+d4,14,lime,shaken,1
+d4,14,lime,shaken,1
+d4,14,lime,shaken,1
+d4,14,lime,shaken,1
+d4,14,lime,shaken,1
+d4,17,lime,shaken,1
+d4,17,lime,shaken,1
+d4,17,lime,shaken,1
+d4,18,lime,shaken,1
+d4,18,lime,shaken,1
+d4,18,lime,shaken,1
+d4,19,lime,shaken,1
+d4,19,lime,shaken,1
+d4,21,lime,shaken,1
+d4,22,lime,shaken,1
+d4,23,lime,shaken,0
+d5,13,lime,shaken,1
+d5,13,lime,shaken,1
+d5,13,lime,shaken,1
+d5,13,lime,shaken,1
+d5,13,lime,shaken,1
+d5,13,lime,shaken,1
+d5,14,lime,shaken,1
+d5,14,lime,shaken,1
+d5,15,lime,shaken,1
+d5,15,lime,shaken,1
+d5,16,lime,shaken,1
+d5,16,lime,shaken,1
+d5,17,lime,shaken,1
+d5,17,lime,shaken,1
+d5,17,lime,shaken,1
+d5,18,lime,shaken,1
+d5,18,lime,shaken,1
+d5,19,lime,shaken,1
+d5,20,lime,shaken,1
+d5,20,lime,shaken,1
+d6,13,lime,shaken,1
+d6,13,lime,shaken,1
+d6,13,lime,shaken,1
+d6,14,lime,shaken,1
+d6,14,lime,shaken,1
+d6,14,lime,shaken,1
+d6,17,lime,shaken,1
+d6,17,lime,shaken,1
+d6,17,lime,shaken,1
+d6,18,lime,shaken,1
+d6,18,lime,shaken,1
+d6,18,lime,shaken,1
+d6,20,lime,shaken,1
+d6,20,lime,shaken,1
+d6,20,lime,shaken,1
+d6,21,lime,shaken,1
+d6,22,lime,shaken,1
+d6,23,lime,shaken,0
+d6,23,lime,shaken,0
+d6,23,lime,shaken,0
