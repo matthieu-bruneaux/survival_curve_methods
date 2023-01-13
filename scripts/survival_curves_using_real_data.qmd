@@ -1,0 +1,90 @@
+---
+title: "Fitting survival curves to real life data."
+author: "Daniel Padfield"
+format: html
+editor: visual
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  #tidy.opts=list(width.cutoff=60),
+  #tidy=TRUE,
+  fig.align = 'center',
+  warning=FALSE,
+  message = FALSE
+)
+
+here::i_am('scripts/survival_curves_using_real_data.qmd')
+```
+
+## Introduction
+
+Virulence assays using animal models (such as the waxmoth larvae *Galleria melonella*) have become increasingly popular for studying virulence of microbes, viruses, and fungi. Generally these assays involve injecting bacteria into the many insects and then tracking time to death of multiple individuals.
+
+Microbiologists take great care in the care and selection of the animal being used as the virulence model. For example, for *Galleria* we make sure to standardise the source, care, and preparation of the model organism (amongst other things) to try and minimise differences between individuals that could add unwanted variation to our results.
+
+However, primers and advice on how to analyse survival curve data in microbiology remains lacking. TIf we do not take the same care in our analyses as we do in our curation of the data, we risk making conclusions that are not adequately supported by the dataset.
+
+This primer aims to walk through a real life dataset and shows a common pitfall in the analysis of these types of experiments where each *Galleria* is not independent from each other. This non-independence impacts the way we do significance testing and can result in false positives (where we think there is a significant effect where there isn't). In demonstrating the problem, we also show how to fit and visualise survival curves in multiple ways that are summarised below.
+
+### Methods of fitting survival curves implemented
+
+-   Fitting a Cox proportional hazards model using **coxph()**. The survival curves for this model can be visualised using **ggsurvplot()**.
+
+-   Fitting a hierarchical (mixed effects model) Cox proportional hazards model using **coxme()**. There is currently no way of visualising the survival curves of a hierarchical Cox proportional hazards model.
+
+-   Fitting Bayesian survival curves using **rstanarm**. These can easily be made hierarchical to account for random effects. The survival curves for this model can easily be visualised using **rstanarm** and **ggplot**.
+
+-   Fitting Bayesian survival curves using **brms**. The survival curve can be visualised in a similar using these methods: https://github.com/paul-buerkner/brms/issues/966. The addition of the cox model is explained here: https://github.com/paul-buerkner/brms/issues?q=is%3Aissue+cox+is%3Aclosed
+
+-   Using a piecewise-exponential model that allows us to model the hazard using a poisson regression https://discourse.mc-stan.org/t/using-stan-jm-for-parametric-proportional-hazards-regression-only/3931/3
+
+### The dataset and the problem of non-independence
+
+We will first read in the dataset and have a look at the columns and structure of the dataset. The dataset is from an experiment a colleague ran where he injected bacteria into *Galleria melonella* and tracked how long it took them to die.
+
+The bacterial clones (`d$clone`) had been isolated from different treatments that had contained lime or not (probably calcium carbonate) (`d$treat1`) and been cultured in a shaken or static environment (`d$treat2`).
+
+```{r read_data}
+# load in first package
+library(tidyverse)
+
+# read in dataset
+d <- read.csv(here::here('data/real_life_data.csv'))
+
+# look at the structure of the dataframe
+str(d)
+
+# look at unique clone values
+unique(d$clone)
+
+# look at unique values for treatments
+unique(d$treat1)
+unique(d$treat2)
+
+# how many clones do we have per treatment combination
+select(d, clone, treat1, treat2) %>%
+  distinct() %>%
+  group_by(treat1, treat2) %>%
+  tally()
+```
+
+The column definitions are as follows:
+
+-   `clone` is the bacterial clone
+
+-   `time_of_death` is the time to death in hours
+
+-   `treat1` is whether the bacteria were evolved in the presence of lime or not
+
+-   `treat2` is whether the bacteria were evolved in while being shaken or static
+
+-   `status` is whether the Galleria was dead (1) or alive (0). Zeroes are right censored data where the individuals do not die during the experiment.
+
+In this experiment the same individual clone was injected into multiple individuals and this is an increasingly common practice in experiments looking at the evolution of virulence in microbes. Our question is whether virulence (the survival curves) are different between our treatments. We have six individual clones per treatment combination, and need to account for the non-independence of when insect larvae have been injected with the same bacterial clone.
+
+Understanding the structure of your data, and how it impacts the analysis you do, is important to think about BEFORE collecting your data during your experimental design.
+
+We will now load in the packages needed for variety of ways we demonstrate fitting survival curves in R.
