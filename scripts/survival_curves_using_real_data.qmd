@@ -106,7 +106,7 @@ library(tidybayes) # install.packages('tidybayes')
 library(patchwork) # install.packages('patchwork')
 library(pammtools) # install.packages("pammtools")
 library(brms) # install.packages('brms')
-library(bayesplot) # install.packages('bayesplot')
+library(ggdist) # install.packages('ggdist')
 ```
 
 We can then start running through the analyses.
@@ -184,8 +184,8 @@ The hazard ratio for the mixed effects model is the same as for the standard Cox
 It would be nice to be able to visualise the survival curves as for the standard Cox model, but this seems tricky for **coxme**. What we can do is produce clone-level survival curves and then plot them along with the treatment level curves, to see how much variation across clones there is within and between our treatments. This is not the
 
 ```{r plot_coxme}
-#| fig.width = 7
-#| fig.height = 5
+#| fig.width: 7
+#| fig.height: 5
 
 # create predictions
 model_preds <- survfit(Surv(time_of_death, status)~treat2, data=d)
@@ -221,15 +221,45 @@ In this plot, the thick lines are the treatment-level effects, and the thinner l
 The popular Bayesian analysis package **brms** has implemented the Cox family that allows for Bayesian Cox proportional hazards models.
 
 ```{r brms_model}
-fit_brm <- brm(time_of_death | cens(1 - status) ~ treat2 + (1|clone), 
+#| message: false
+
+fit_brms <- brm(time_of_death | cens(1 - status) ~ treat2 + (1|clone), 
             data = d, 
             family = brmsfamily("cox"),
             chains = 3,
             iter = 3000)
-summary(fit_brm)
+summary(fit_brms)
 ```
 
 This recreates the **coxme** model. We can see the estimate (which represents the log hazard) for the static populations is -0.49, making the hazard ratio estimate 0.61, which is very similar to that of **coxph()** and **coxme()**. However we can look at the distribution of the parameter estimates to calculate credible intervals and look at the uncertainty around our estimate of the hazard ratio.
+
+We will do this using the great packages **tidybayes** and **ggdist**.
+
+```{r brms_hazard}
+#| fig.height: 4
+#| fig.width: 7
+
+# look at what parameters are possible
+get_variables(fit_brms)
+# loads
+
+# choose only the main effect
+brms_hr <- fit_brms %>%
+  gather_draws(`b_treat2static`, regex = TRUE) %>%
+  mutate(hazard_ratio = exp(.value))
+
+# make plot
+ggplot(brms_hr, aes(y = .variable, x = hazard_ratio)) +
+  geom_vline(aes(xintercept = 1), linetype = 2) +
+  stat_eye(aes(fill = stat(level)), alpha = 0.8) +
+  theme_bw(base_size = 14) +
+  scale_fill_brewer(na.translate = FALSE) +
+  labs(y = '') +
+  theme(legend.position = c(0.8, 0.8)) 
+
+```
+
+From this we can see that our estimated hazard ratio has 95% credible intervals that encompass 1 (median hazard ratio = 0.62, 95%CI = 0.271-1.36), which if we wanted to interpret in a frequentist manner would mean that whether the bacteria were grown statically or shaken does not alter the survival probability of the larvae.
 
 It may be possible to plot the survival curve using **brms** but it is not a simple procedure. See [here](https://discourse.mc-stan.org/t/plotting-survival-plots-after-brm/14226) for a brief discussion of how to do it.
 
@@ -237,7 +267,11 @@ We can use a great online workthrough of the survival book by Solomon Kurz. [Cha
 
 However, it is not straightforward to sample from the posterior distribution of a Cox model in **brms**, so the visualisation possibilities for the survival curve are limited.
 
+We might be able to manually get a prediction for a larvae in each group by calculating the baseline hazard through time and then multiplying this by each of the posterior draws. See [here](https://discourse.mc-stan.org/t/manual-absolute-predictions-from-cox-model-in-brms/27966/8) for an example, which links to [here](https://stats.stackexchange.com/questions/36015/prediction-in-cox-regression).
+
 ### Running an M-splines hazards model using rstanarm
+
+There has also been a lot of development in the Bayesian analysis R package **rstanarm** to allow for the fitting of survival curves. All of these treat times as a continuous predictor. Here we will fit the default M-splines model.
 
 ```{r rstanarm_model}
 # do an analysis using rstanarm
@@ -247,9 +281,8 @@ mod_rstanarm <- stan_surv(Surv(time_of_death, status) ~ treat2 + (1|clone),
                         cores = 3,
                         seed = 42,
                         iter = 3000)
+
 mod_rstanarm
-
-
 ```
 
 ### Running a piecewise-exponential model using brms
