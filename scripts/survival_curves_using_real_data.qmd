@@ -49,7 +49,7 @@ The bacterial clones (`d$clone`) had been isolated from different treatments tha
 
 ```{r read_data}
 # load in first package
-library(tidyverse)
+library(tidyverse) # install.packages('tidyverse')
 
 # read in dataset
 d <- read.csv(here::here('data/real_life_data.csv'))
@@ -88,3 +88,170 @@ In this experiment the same individual clone was injected into multiple individu
 Understanding the structure of your data, and how it impacts the analysis you do, is important to think about BEFORE collecting your data during your experimental design.
 
 We will now load in the packages needed for variety of ways we demonstrate fitting survival curves in R.
+
+## Analysing survival curves
+
+### Load in packages
+
+Firstly we will load in the packages used for analysing survival curves. Most are easily installable (the code to install them is to the right of each command as a comment). The survival analysis code from **rstanarm** is currently on a development branch on GitHub, so is a bit more involved to install, but it SHOULD be ok following the code provided.
+
+```{r load_packages}
+
+# load in packages
+library(survival) # install.packages('survival')
+library(survminer) # install.packages('survminer')
+library(coxme) # install.packages('coxme')
+library(rstanarm) # clone repository into directory of choice using "git clone -b feature/survival https://github.com/stan-dev/rstanarm.git" in your terminal. Open the R project and run devtools::document(). Then run devtools::install() to install the development version of rstanarm.
+library(tidybayes) # install.packages('tidybayes')
+library(patchwork) # install.packages('patchwork')
+library(pammtools) # install.packages("pammtools")
+library(brms) # install.packages('brms')
+library(bayesplot) # install.packages('bayesplot')
+```
+
+We can then start running through the analyses.
+
+### Running a Cox proportional hazards model
+
+The most common (and simplest) way of running a survival curve analysis is to do a Cox proportional hazards model using **survival::coxph()**. These can then be visualised using **survminer::ggsurvplot()** amongst other methods.
+
+The function **coxph()** allows us to use classic likelihood ratio tests using **anova()** to test for the significance of individual factors and interactions. So we will start off with the most complex model with an interaction between treat1 and treat2 and then simplify from there.
+
+```{r cox_model}
+
+# do coxph regression and model simplification
+model <- coxph(Surv(time_of_death, status) ~ treat1*treat2, data=d)
+model2 <- coxph(Surv(time_of_death, status) ~ treat1 + treat2, data=d)
+anova(model, model2)
+# this term is not significant
+
+model3 <- coxph(Surv(time_of_death, status) ~ treat2, data=d)
+anova(model2, model3)
+# this term (treat1) is not significant 
+
+model4 <- coxph(Surv(time_of_death, status) ~ treat1, data=d)
+anova(model2, model4)
+# this term (treat2) is significant
+
+model5 <- coxph(Surv(time_of_death, status) ~ 1, data=d)
+anova(model3, model5)
+anova(model4, model5)
+# confirmation that model3 is the best model
+```
+
+So from this process we can see that model3 is the best model. This model says there is likely differential survival for larvae injected with bacteria that were evolved under shaken or static conditions.
+
+The survival curves can be visualised using **survfit()** methods.
+
+```{r cox_model_plot}
+#| fig.height: 6
+#| fig.width: 10
+
+# create predictions
+model_preds <- survfit(Surv(time_of_death, status)~treat2, data=d)
+# summary(model_preds)
+
+# plot survival curve
+p1 <- ggsurvplot(model_preds, data = d, legend = "right", legend.title = "Treatment", ggtheme = theme_bw(), conf.int = TRUE, linetype = c(1), palette = "Paired2", censor = FALSE, legend.labs = c('shaken', 'static'), xlab = "Time (Hours)", ylab = "Proportion Alive", font.y = c(15), font.x = c(15), font.tickslab = c(15), conf.int.alpha = 0.15)
+p2 <- ggforest(model3, data = d, main = "Treatment impacts on Pseudomonas virulence", fontsize = 0.5)
+
+p1$plot + p2 + plot_layout(ncol = 2)
+
+```
+
+So this model finds that bacteria evolved under shaken conditions are more virulent (larvae have worse survival) than bacteria evolved under static conditions. The hazards ratio between shaken and static is the exponent of the log hazard (which is the coef) in the output of the Cox model. This can be extracted using **exp(coef(model3)** and is 0.65 in this instance, meaning that 0.65 times as many larvae injected with static bacteria are dying as compared to larvae injected with shaken bacteria. Stated differently, shaken bacteria are significantly more virulent than static bacteria in these data.
+
+However, some of these larvae have been injected with exactly the same bacterial clone, so are not independent. This alters the residual degrees of freedom of the model and makes us more likely to find significance if we do not account for this non-independence.
+
+### Running a hierarchical (mixed effects) Cox proportional hazards model
+
+We can run a mixed effects (hierarchical) Cox proportional hazards model with **coxme::coxme()**. We will just see whether our best model using the non-hierarchical method is still significant (does treat2 still matter when accounting for non-independence of our larvae).
+
+```{r coxme_model}
+
+# originally using a standard cox model
+model_me <- coxme(Surv(time_of_death, status)~treat2 + (1|clone), d)
+model_me
+model_me2 <- coxme(Surv(time_of_death, status)~1 + (1|clone), d)
+anova(model_me, model_me2)
+# no longer significant
+```
+
+After accounting for the fact that the same clone was injected into multiple larvae, the effect of static vs. shaken bacteria is no longer significant.
+
+The hazard ratio for the mixed effects model is the same as for the standard Cox model at 0.64, but the standard error of the coefficient is much larger (0.37 compared to 0.11).
+
+It would be nice to be able to visualise the survival curves as for the standard Cox model, but this seems tricky for **coxme**. What we can do is produce clone-level survival curves and then plot them along with the treatment level curves, to see how much variation across clones there is within and between our treatments. This is not the
+
+```{r plot_coxme}
+#| fig.width = 7
+#| fig.height = 5
+
+# create predictions
+model_preds <- survfit(Surv(time_of_death, status)~treat2, data=d)
+model_preds_clone <- survfit(Surv(time_of_death, status)~clone, data=d)
+
+# make plot, grab data to plot again
+p1_data <- ggsurvplot(model_preds) %>%
+  .$plot %>%
+  .$data %>%
+  select(time, surv, treat2, upper, lower) %>%
+  mutate(treat2 = as.character(treat2))
+p2_data <- ggsurvplot(model_preds_clone) %>%
+  .$plot %>%
+  .$data %>%
+  select(time, surv, clone, upper, lower) %>%
+  mutate(clone = as.character(clone)) %>%
+  left_join(., select(d, treat2, clone) %>% distinct())
+
+# overlay treatment plot with clone level estimates
+ggplot() +
+  geom_stepribbon(aes(x = time, ymin = lower, ymax = upper, fill = treat2), alpha = 0.1, p1_data) +
+  geom_step(aes(time, surv, col = treat2, group = clone), alpha = 0.5, p2_data) +
+  geom_step(aes(time, surv, col = treat2), p1_data, linewidth = 1.5) +
+  theme_bw()
+```
+
+In this plot, the thick lines are the treatment-level effects, and the thinner lines are the individual clones. We can see that there are clones in the static treatment that are really virulent, causing 100% mortality as quickly as the most virulent shaken bacteria. It is this clone-variation that is likely making causing the significance in the original Cox model, and the reason why accounting for it removes the significant effect of shaken vs. static.
+
+**coxme** is fine here and allows us to account for the non-independence of our data. But relatively new methods have been implemented in a Bayesian framework that allow for us to better visualise and understand the uncertainty in our data. These approaches have been implemented in the Stan coding language and implemented in **brms** and **rstanarm**. We shall show examples of both of these in turn.
+
+### Running a Bayesian Cox proportional hazards model using brms
+
+The popular Bayesian analysis package **brms** has implemented the Cox family that allows for Bayesian Cox proportional hazards models.
+
+```{r brms_model}
+fit_brm <- brm(time_of_death | cens(1 - status) ~ treat2 + (1|clone), 
+            data = d, 
+            family = brmsfamily("cox"),
+            chains = 3,
+            iter = 3000)
+summary(fit_brm)
+```
+
+This recreates the **coxme** model. We can see the estimate (which represents the log hazard) for the static populations is -0.49, making the hazard ratio estimate 0.61, which is very similar to that of **coxph()** and **coxme()**. However we can look at the distribution of the parameter estimates to calculate credible intervals and look at the uncertainty around our estimate of the hazard ratio.
+
+It may be possible to plot the survival curve using **brms** but it is not a simple procedure. See [here](https://discourse.mc-stan.org/t/plotting-survival-plots-after-brm/14226) for a brief discussion of how to do it.
+
+We can use a great online workthrough of the survival book by Solomon Kurz. [Chapter 13.3](https://bookdown.org/content/4253/describing-continuous-time-event-occurrence-data.html#the-kaplan-meier-method-of-estimating-the-continuous-time-survivor-function) demonstrates to create a Kaplan-Meier curve using **brms**.
+
+However, it is not straightforward to sample from the posterior distribution of a Cox model in **brms**, so the visualisation possibilities for the survival curve are limited.
+
+### Running an M-splines hazards model using rstanarm
+
+```{r rstanarm_model}
+# do an analysis using rstanarm
+mod_rstanarm <- stan_surv(Surv(time_of_death, status) ~ treat2 + (1|clone),
+                        data = d,
+                        chains = 3,
+                        cores = 3,
+                        seed = 42,
+                        iter = 3000)
+mod_rstanarm
+
+
+```
+
+### Running a piecewise-exponential model using brms
+
+### Comparing estimates of hazard ratios across methods
