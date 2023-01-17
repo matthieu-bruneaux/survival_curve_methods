@@ -421,12 +421,6 @@ Reassuringly all of these methods provide similar estimates of the hazard ratio,
 General overview
 
 -   fully account for, visualise, and understand the uncertainty in the data
-
-```{=html}
-<!-- -->
-```
 -   can get access to random effect survival curves as well as fixed effect survival curves
-
 -   estimates are very easily manipulated allowing for complex, custom contrasts that are much harder to compute otheriwse
-
 -   can compare individual curves to the AVERAGE curve to understand which treatments are generally more virulent than others
