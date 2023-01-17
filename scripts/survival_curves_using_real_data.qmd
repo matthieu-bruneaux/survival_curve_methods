@@ -300,4 +300,133 @@ mod_rstanarm
 
 ### Running a piecewise-exponential model using brms
 
+The piecewise-exponential model divides the time scales into intervals and the hazard function is assumed to be constant within each interval. Using this trick, survival models can be fit using a Poisson regression model. This explanation can be found in more detail [here](https://onlinelibrary.wiley.com/doi/full/10.1111/insr.12214).
+
+These models normally treat the time intervals as a factor since it estimates the intercept for each time interval. However we can also use a spline smoother to estimate the baseline hazard as a continuous function. We will demonstrate both.
+
+First though, we need to do some data rearranging. The dataset currently has 1 row per larvae, but we need the dataset to be 1 row for each timepoint where the larvae is alive.
+
+```{r brms_pem}
+# prepare the dataset
+final_time <- max(d$time_of_death)
+
+events_only <- d %>%
+  filter(status == 1) %>%
+  pull(time_of_death) %>%
+  unique() %>%
+  sort()
+
+cut_events <- c(events_only, final_time) %>% unique()
+
+d <- mutate(d, id = 1:n())
+
+d_new <- survSplit(
+  formula = Surv(time_of_death, status) ~ .,
+  data = d,
+  cut = cut_events) %>%
+  rename(tstop = time_of_death) %>%
+  mutate(tduration = tstop - tstart)
+
+# check this gets the same answer
+model3.2 <- coxph(Surv(tstart, tstop, status)~treat2, 
+        data = d_new)
+
+# fit the brms model using time interval as a factor
+fit_brms_pem_fac <- brm(
+  formula = status ~ treat2 + as.factor(tstop) + offset(log(tduration)) + (1|clone),
+  family = poisson(),
+  prior = set_prior('normal(0, 4)', class = 'b'), 
+  data = d_new, 
+  chains = 3, 
+  iter = 2000)
+
+# fit the brms model using time interval as a continuous variable
+# number of knots is the length of cutpoints
+fit_brms_pem_cont <- brm(
+  formula = status ~ treat2 + as.factor(tstop) + offset(log(tduration)) + (1|clone),
+  family = poisson(),
+  prior = set_prior('normal(0, 4)', class = 'b'), 
+  data = d_new, 
+  chains = 3, 
+  iter = 2000)
+```
+
 ### Comparing estimates of hazard ratios across methods
+
+We have now fit six different survival models to the same data, each with slightly different assumptions. We can compare the coefficients for each method. Specifically we will calculate the confidence interval for the hazard ratio between larvae injected with static vs. shaken bacteria. For the frequentist methods (**coxph** and **coxme**) we will calculate 95% confidence intervals, and for the bayesian methods we will calculate 95% credible intervals, but take the median as the point estimate as the distribution earlier in the code does not look completely normal.
+
+```{r compare_hrs}
+#| fig.width: 7
+#| fig.height: 5
+
+# calculate confidence interval for coxph
+coxph_ci <- tibble(hr = exp(coef(model3)),
+                 lower = exp(coef(model3) - (1.96 * sqrt(diag(vcov(model3))))),
+                 upper = exp(coef(model3) + (1.96 * sqrt(diag(vcov(model3))))),
+                 method = 'coxph')
+
+# calculate confidence interval for coxme
+coxme_ci <- tibble(hr = exp(coef(model_me)),
+                 lower = exp(coef(model_me) - (1.96 * sqrt(diag(vcov(model_me))))),
+                 upper = exp(coef(model_me) + (1.96 * sqrt(diag(vcov(model_me))))),
+                 method = 'coxme')
+
+# calculate credible intervals for the brms Cox model
+brms_ci_cox <- brms_hr %>%
+  median_qi(hazard_ratio) %>%
+  select(hr = hazard_ratio, lower = .lower, upper = .upper) %>%
+  mutate(method = 'brms_cox')
+
+# calculate credible intervals for rstanarm M-splines model
+rstanarm_ci <- mod_rstanarm %>%
+  gather_draws(`treat2static`, regex = TRUE) %>%
+  mutate(hazard_ratio = exp(.value)) %>%
+  median_qi(hazard_ratio) %>%
+  select(hr = hazard_ratio, lower = .lower, upper = .upper) %>%
+  mutate(method = 'rstanarm_msplines')
+
+# calculate credible intervals for brms PEM models
+brms_ci_pemfac <- fit_brms_pem_fac %>%
+  gather_draws(`b_treat2static`, regex = TRUE) %>%
+  mutate(hazard_ratio = exp(.value)) %>%
+  median_qi(hazard_ratio) %>%
+  select(hr = hazard_ratio, lower = .lower, upper = .upper) %>%
+  mutate(method = 'brms_pem_fac')
+
+brms_ci_pemcont <- fit_brms_pem_cont %>%
+  gather_draws(`b_treat2static`, regex = TRUE) %>%
+  mutate(hazard_ratio = exp(.value)) %>%
+  median_qi(hazard_ratio) %>%
+  select(hr = hazard_ratio, lower = .lower, upper = .upper) %>%
+  mutate(method = 'brms_pem_cont')
+
+# combine datasets together
+all_cis <- bind_rows(coxph_ci, coxme_ci, brms_ci_cox, brms_ci_pemcont, brms_ci_pemfac, rstanarm_ci)
+
+# plot
+ggplot(all_cis, aes(y = method, x = hr)) +
+  geom_point(size = 3) +
+  geom_linerange(aes(xmin = lower, xmax = upper)) +
+  theme_bw(base_size = 14) +
+  geom_vline(aes(xintercept = 1), linetype = 2) +
+  labs(x = 'Hazard ratio') +
+  xlim(c(0, 1.6))
+
+```
+
+Reassuringly all of these methods provide similar estimates of the hazard ratio, but the Cox proportional hazards model that does not account for random effects is much more confident in estimate than all the other methods that do account for non-independence between clones.
+
+## So why bother with rstanarm and the Bayesian approach?
+
+General overview
+
+-   fully account for, visualise, and understand the uncertainty in the data
+
+```{=html}
+<!-- -->
+```
+-   can get access to random effect survival curves as well as fixed effect survival curves
+
+-   estimates are very easily manipulated allowing for complex, custom contrasts that are much harder to compute otheriwse
+
+-   can compare individual curves to the AVERAGE curve to understand which treatments are generally more virulent than others
