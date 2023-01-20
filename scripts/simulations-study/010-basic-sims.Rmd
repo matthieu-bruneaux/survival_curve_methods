@@ -1,0 +1,411 @@
+---
+title: "Some basic simulations to compare modelling approaches"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+---
+
+```{r, include = FALSE}
+knitr::opts_knit$set(verbose = TRUE)
+knitr::opts_chunk$set(fig.align = "center",
+                      dev = "png")
+options(scipen = 6, width = 85)
+```
+
+**Note:** This is very much a work-in-progress vignette at the moment!
+
+**Note 2:** I am experimenting with caching in this vignette (cf. https://bookdown.org/yihui/rmarkdown-cookbook/cache-rds.html#cache-rds). To be sure to reevaluate all code chunks from scratch, delete the cache folder before rendering!
+
+## Overview
+
+In this document, we compare the performances of two modelling strategies when analysing survival datasets with grouping factors (i.e. pseudoreplication). One strategy ignores the grouping factor(s) while the other takes them into account via random effects.
+
+The aim of this document is to complement the real-life case study written by Daniel and to hopefully draw general conclusions by working on many simulated datasets for which the true values of the generative parameters are known.
+
+At this stage, I am just putting into place the basic building blocks of the dataset simulation/statistical analysis/methods comparison pipeline. I am using only one baseline hazard function, one design of the true generative model (with one fixed effect and one grouping factor) and a very small subset of parameter values.
+
+I am also only comparing two methods at this stage: a Cox proportional hazards model (`coxph` function) and a Cox mixed-effects model (`coxme` function). Later on we can also include Bayesian methods with rstanarm, Poisson regression, etc.
+
+We can also expand later our exploration of the effect of different baseline hazard functions (e.g. by looking for a few typical shapes observed in microbiology literature?), different experimental designs, and parameter values on the performances of all the different methods that Daniel presents in the vignette for the real-life case study.
+
+### R setup
+
+Below, I will use the `etalon` package to organize my simulations. This package is in development but already quite functional and can be installed with:
+
+```{r eval = FALSE}
+devtools::install_gitlab("matthieu-bruneaux/etalon")
+```
+
+I will use the `simsurv` package to simulate survival data:
+
+```{r eval = FALSE}
+install.packages("simsurv")
+```
+
+Loading packages:
+
+```{r message = FALSE}
+library(simsurv)
+library(survminer)
+library(survival)
+library(coxme)
+library(tibble)
+library(magrittr)
+library(ggplot2)
+library(etalon)
+library(dplyr)
+library(tidyr)
+library(broom)
+set.seed(5)
+```
+
+Setting up parallel computation for `etalon` functions:
+
+```{r message = FALSE}
+library(future)
+plan(multisession)
+```
+
+## Simulating one dataset
+
+### Building the baseline hazard
+
+Let's start by simulating one dataset to get our feet wet. The first step is to create a hazard function, which gives the instantaneous risk of death for a given time. Let's imagine that the function below is the hazard rate for a large fish species, such as tuna, and that time is in years (we can change this example to a more "microbiological" example later if needed):
+
+```{r }
+# Time
+t <- seq(0, 100, length.out = 256)
+# Hazard
+h <- 1/(1 + exp(0.2*(25-t))) * 0.5 * exp(t/100) + exp(-t) * 0.5
+# Plot
+plot(t, h, type = "l", las = 1, xlab = "Time (year)", ylab = "Hazard")
+```
+
+In the curve above, we can see that there is a high hazard rate for young individuals, but if they can survive their first years then the hazard rate during adulthood is quite low. It then increases again as the individuals get old, and it gets higher and higher for older and older individuals.
+
+Now that we have the hazard function, we can use the `simsurv` package to generate observations (i.e. survival times) based on this baseline hazard:
+
+```{r }
+# Hazard function to be used with simsurv::simsurv()
+f <- function(t, x, betas, ...) {
+    1/(1 + exp(0.2*(25-t))) * 0.5 * exp(t/100) + exp(-t) * 0.5
+}
+# Simulating survival times for 100 individuals
+z <- simsurv(hazard = f, x = data.frame(id = 1:100), maxt = 150) %>%
+    as_tibble()
+
+hist(z$eventtime, breaks = 20)
+```
+
+This looks like a good baseline hazard rates and survival times to work with.
+
+### Adding one covariate (i.e. one fixed effect)
+
+Now let's add the effect of a covariate. Here we simulate a categorical factor (`parasite`) with two levels: `present` and `absent`. The idea is that the presence of a parasite will increase the hazard by a constant multiplicative factor.
+
+```{r }
+N <- 100 # Number of individuals
+# We create a table with one individual per row, and a "parasite" covariate
+x <- tibble(id = 1:N,
+            parasite = sample(c("absent", "present"), N, replace = TRUE))
+x
+
+# Below are the multiplicative effects of parasite absence/presence on hazard
+betas <- c("absent" = 1, "present" = 1.5)
+
+# Hazard function (including the effect of covariates)
+f <- function(t, x, betas, ...) {
+    baseline_h <- 1/(1 + exp(0.2*(25-t))) * 0.5 * exp(t/100) + exp(-t) * 0.5
+    baseline_h * betas[x[["parasite"]]]
+}
+
+# Simulating survival times
+z <- simsurv(hazard = f, betas = betas, x = x, maxt = 150) %>%
+    as_tibble()
+z <- merge(x, z)
+
+# Visualization
+fit <- survfit(Surv(eventtime, status) ~ parasite, data = z)
+ggsurvplot(fit)
+```
+
+Looking good.
+
+### Adding one grouping factor (i.e. one random effect)
+
+Now adding `locality` as a random effect. `locality` is a categorical variable, and each locality will be associated with a multiplicative effect on the hazard. Because we simulate this as a random effect, we assume that the locality coefficients come from a normal distribution with mean 0 (the multiplicative effects on the hazard are the exponentials of those coefficients, so a mean of 0 corresponds to a multiplicative factor of `exp(0) = 1`).
+
+```{r }
+n_localities <- 10
+localities <- sample(letters[1:n_localities], size = N, replace = TRUE)
+# Assign localities to individuals
+x_locs <- x
+x_locs[["locality"]] <- localities
+# Draw localities effects
+betas_locs <- setNames(rnorm(n_localities, 0, sd = 0.5), nm = letters[1:n_localities])
+betas_locs
+
+# Hazard function, including "parasite" and "locality" effects
+f_locs <- function(t, x, betas, ...) {
+    baseline_h <- 1/(1 + exp(0.2*(25-t))) * 0.5 * exp(t/100) + exp(-t) * 0.5
+    baseline_h * betas[x[["parasite"]]] * exp(betas[x[["locality"]]])
+}
+
+# Simulating survival times
+z <- simsurv(hazard = f_locs, betas = c(betas, betas_locs), x = x_locs,
+             maxt = 150) %>%
+    as_tibble()
+z <- merge(x_locs, z)
+
+# Visualization (first overall parasite effect, then overall localities effects)
+fit <- survfit(Surv(eventtime, status) ~ parasite, data = z)
+ggsurvplot(fit)
+
+fit <- survfit(Surv(eventtime, status) ~ locality, data = z)
+ggsurvplot(fit)
+```
+
+### Fitting a model to the simulated data
+
+We will use this simulated data for which we know that there is an effect of "parasite" and of "locality".
+
+Let's fit both a simple model without random effect and a model with random effect:
+
+```{r }
+m1 <- coxph(Surv(eventtime) ~ parasite, data = z)
+m2 <- coxme(Surv(eventtime) ~ parasite + (1 | locality), data = z)
+AIC(m1, m2)
+```
+
+AIC tells us that the model with random effect is the best, as expected. Let's compare the estimates for the effect of parasite from both models. The true value for this effect was `1.5`:
+
+```{r }
+summary(m1)
+summary(m2)
+```
+
+Both estimates are quite close to the true value of 1.5 (`exp(coef)` in the summaries above), and the standard error is also quite similar. Based on this single simulated dataset, the practical advantage of using a random effects model is not obvious (even though we know that it corresponds to the true generative model).
+
+But let's see what happens when we generate more datasets and when we do a more general comparison from many simulations.
+
+## Running many simulations
+
+This is where we use the `etalon` package to assist with organizing the simulations.
+
+For now we run only a few simulations: we use only two values of `beta` (the fixed effect) and two values of `sd_locs` (the variance of the localities random effect). We generate 500 replicates for each combination of parameter values.
+
+```{r }
+# Build the simulation table
+s <- sim_table() %>%
+  cross_parameters(beta_parasite = c(1.1, 1.5),
+                   n_locs = 10,
+                   sd_locs = c(0.5, 2),
+                   N = 100) %>%
+  replicate_sims(500)
+params(s)
+```
+
+```{r eval = FALSE}
+# Write the function responsible for generating a dataset
+sim_data <- function(N, beta_parasite, n_locs, sd_locs) {
+    loc_names <- paste("loc_", seq_len(n_locs))
+    beta_locs <- setNames(rnorm(n_locs, 0, sd_locs),
+                          nm = loc_names)
+    beta_parasite <- c("absent" = 1, "present" = beta_parasite)
+    x <- tibble(id = 1:N,
+                parasite = sample(c("absent", "present"), N, replace = TRUE),
+                locality = sample(loc_names, size = N, replace = TRUE))
+    f_locs <- function(t, x, betas, ...) {
+        baseline_h <- 1/(1 + exp(0.2*(25-t))) * 0.5 * exp(t/100) + exp(-t) * 0.5
+        baseline_h * betas[x[["parasite"]]] * exp(betas[x[["locality"]]])
+    }
+    z <- simsurv(hazard = f_locs, betas = c(beta_parasite, beta_locs),
+                 x = x, maxt = 150) %>%
+        as_tibble()
+    merge(x, z)
+}
+
+# Apply this function to generate the datasets
+s <- generate_data(s, sim_data)
+
+s
+```
+
+```{r generate_data, echo = FALSE}
+# Write the function responsible for generating a dataset
+sim_data <- function(N, beta_parasite, n_locs, sd_locs) {
+  loc_names <- paste("loc_", seq_len(n_locs))
+  beta_locs <- setNames(rnorm(n_locs, 0, sd_locs),
+                        nm = loc_names)
+  beta_parasite <- c("absent" = 1, "present" = beta_parasite)
+  x <- tibble(id = 1:N,
+              parasite = sample(c("absent", "present"), N, replace = TRUE),
+              locality = sample(loc_names, size = N, replace = TRUE))
+  f_locs <- function(t, x, betas, ...) {
+    baseline_h <- 1/(1 + exp(0.2*(25-t))) * 0.5 * exp(t/100) + exp(-t) * 0.5
+    baseline_h * betas[x[["parasite"]]] * exp(betas[x[["locality"]]])
+  }
+  z <- simsurv(hazard = f_locs, betas = c(beta_parasite, beta_locs),
+               x = x, maxt = 150) %>%
+    as_tibble()
+  merge(x, z)
+}
+
+s <- xfun::cache_rds({
+  # Apply this function to generate the datasets
+  s <- generate_data(s, sim_data)
+}, hash = list(s, deparse(sim_data)))
+
+s
+```
+
+Now that the datasets have been generated, we can use both the `coxph` and the `coxme` functions to analyze them:
+
+```{r eval = FALSE}
+s_cox <- fit_model(s, coxph = function(dataset) {
+    coxph(Surv(eventtime) ~ parasite, data = dataset)
+})
+
+s_coxme <- fit_model(s, coxme = function(dataset) {
+    coxme(Surv(eventtime) ~ parasite + (1 | locality), data = dataset)
+})
+
+bind_rows(s_cox, s_coxme)
+```
+
+```{r fit_model_cox, echo = FALSE}
+s_cox <- xfun::cache_rds({
+  fit_model(s, coxph = function(dataset) {
+    coxph(Surv(eventtime) ~ parasite, data = dataset)
+  })
+}, hash = list(s))
+```
+
+```{r fit_model_coxme, echo = FALSE}
+s_coxme <- xfun::cache_rds({
+  fit_model(s, coxme = function(dataset) {
+    coxme(Surv(eventtime) ~ parasite + (1 | locality), data = dataset)
+  })
+}, hash = list(s))
+```
+
+```{r echo = FALSE}
+bind_rows(s_cox, s_coxme)
+```
+
+Finally, we write two helper functions responsible for tidying the output of the models:
+
+```{r }
+tidy_fit_cox <- function(fit, conf.int = TRUE, conf.level = 0.95) {
+    z <- broom:::tidy.coxph(fit, conf.int = conf.int, conf.level = conf.level)
+    z$term[[1]] <- "beta_parasite"
+    for (x in c("estimate", "conf.low", "conf.high")) {
+      z[[x]][[1]] <- exp(z[[x]][[1]])
+    }
+    z
+}
+
+tidy_fit_coxme <- function(fit, conf.int = TRUE, conf.level = 0.95) {
+    # From coxme:::print.coxme
+    beta <- fit$coefficients
+    nvar <- length(beta)
+    nfrail <- nrow(fit$var) - nvar
+    se <- sqrt(diag(fit$var)[nfrail + 1:nvar])
+    q <- qnorm(0.5 + conf.level / 2, mean = 0, sd = 1)
+    out <- data.frame(term = "beta_parasite",
+                      estimate = exp(as.vector(beta)),
+                      conf.low = exp(as.vector(beta) - q * se),
+                      conf.high = exp(as.vector(beta) + q * se))
+    out
+}
+```
+
+We apply these functions to the analyzed datasets:
+
+```{r eval = FALSE}
+s_cox <- s_cox %>% tidy_estimates(tidy_fit_cox) %>%
+    tidy_intervals(tidy_fit_cox, conf.level = seq(0.05, 0.95, by = 0.1))
+
+s_coxme <- s_coxme %>% tidy_estimates(tidy_fit_coxme) %>%
+    tidy_intervals(tidy_fit_coxme, conf.level = seq(0.05, 0.95, by = 0.1))
+```
+
+```{r tidy_cox, echo = FALSE}
+s_cox <- xfun::cache_rds({
+  s_cox %>% tidy_estimates(tidy_fit_cox) %>%
+    tidy_intervals(tidy_fit_cox, conf.level = seq(0.05, 0.95, by = 0.1))
+}, hash = list(s_cox, deparse(tidy_fit_cox)))
+```
+
+```{r tidy_coxme, echo = FALSE}
+s_coxme <- xfun::cache_rds({
+  s_coxme %>% tidy_estimates(tidy_fit_coxme) %>%
+    tidy_intervals(tidy_fit_coxme, conf.level = seq(0.05, 0.95, by = 0.1))
+}, hash = list(s_coxme, deparse(tidy_fit_coxme)))
+```
+
+## Comparing models performances on the simulated datasets
+
+We assemble the simulation tables from both approaches into a single table:
+
+```{r }
+s <- bind_rows(s_cox, s_coxme)
+```
+
+### Bias and precision
+
+Visualization of bias and precision of point estimates for `beta`, the fixed effect of the parasite presence:
+
+```{r }
+w <- review(s) %>%
+  mutate(delta_beta = est_beta_parasite - true_beta_parasite)
+ggplot(w, aes(x = as.factor(true_beta_parasite), y = delta_beta, col = fit_tag)) +
+  geom_boxplot() +
+  facet_grid(~ true_sd_locs, labeller = label_both)
+```
+
+**Interpetation:** Ideally, methods should be unbiased (i.e. the `delta_beta` value, which is the difference between the point estimate and the true value for `beta`, should on average be zero) and have good precision (i.e. the `delta_beta` values should not be spread too widely).
+
+When looking at the plots above, it looks like the `coxme` method is unbiased (for all values of `true_beta_parasite` and `true_sd_locs`, the `delta_beta` values are centered around zero). On the other hand, the `coxph` method exhibits a worsening bias when `true_sd_locs` increases and when `true_beta_parasite` increases, with on average an underestimation of the `beta` values for the effect of parasite on survival.
+
+In terms of precision (the spread of the estimates), there is no obvious differences between `coxph` and `coxme`, except maybe for `ture_sd_locs = 2` and `true_beta_parasite = 1.5` where the precision is less for `coxme` (but while `coxph` is more precise in this case it is strongly biased, so `coxme` is still preferable).
+
+In any case, point estimates are only a very small part of the picture: it is much better practice to reason and interpret statistical results in terms of uncertainty intervals. This is what we do below.
+
+### Correctness of confidence intervals
+
+Visualization of the correctness of the confidence intervals for `beta`, the fixed effect of the parasite presence:
+
+```{r fig.width = 6, fig.height = 6}
+w <- bind_cols(review(s), s[, "intervals"])  %>%
+    select(fit_tag, true_sd_locs, true_beta_parasite, intervals) %>%
+    unnest(cols = "intervals") %>%
+    mutate(correct = true_beta_parasite >= conf_low &
+             true_beta_parasite <= conf_high) %>%
+    group_by(fit_tag, true_sd_locs, true_beta_parasite, conf_level) %>%
+    summarize(correctness = mean(correct))
+
+ggplot(w, aes(x = conf_level, y = correctness, color = fit_tag)) +
+  geom_abline(intercept = 0, slope = 1) +
+  geom_point() +
+  geom_line() +
+  coord_fixed() +
+  facet_grid(true_sd_locs ~ true_beta_parasite, labeller = label_both)
+```
+
+**Interpretation:** If the models performed correctly, the confidence intervals should contain the true value for beta on average as frequently as the `conf_level` value (i.e. the colored lines in the graph above  should overlap with the 1:1 line). When the lines are above the 1:1 line, the confidence intervals are too large (i.e. the models are too conservative). When the lines are below the 1:1 line, the confidence intervals are too narrow (i.e. the models are overconfident) or the interval boundaries are biased.
+
+As expected, the `coxph` model is problematic when the effect of the grouping variable is large (`true_sd_locs = 2`): when `true_beta_parasite = 1.5`, the confidence intervals produced by `coxph` do not contain the true value as often as they should. A bit surprisingly for me, this problem is not visible when `true_sd_locs = 2` but `true_beta_parasite = 1.1`, maybe because we are closer to a non-existent fixed effect in this case?
+
+## TODO
+
+- Fix fit functions so that they take into account censored data.
+- Add more fit functions to match the methods presented in the real-life case study.
+- Add some methods which are summarizing the data before analysis, like calculating a mean survival time per group?
+
+## Session info
+
+```{r }
+sessioninfo::session_info()
+```

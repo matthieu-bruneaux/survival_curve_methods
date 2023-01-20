@@ -5,16 +5,28 @@
 
 ## Aims
 
-- Provide an overview for using survival curves to analyse time-to-death
-  data in commonly-used virulence model data.
-- Give guidance on things to consider when planning experiments in terms
-  of thinking about levels of replication and how they change your
-  survival curve analysis.
-- Demonstrate how survival curves can be fit using a variety of methods.
+  - Provide an overview for using survival curves to analyse
+    time-to-death data in commonly-used virulence model data.
+  - Give guidance on things to consider when planning experiments in
+    terms of thinking about levels of replication and how they change
+    your survival curve analysis.
+  - Demonstrate how survival curves can be fit using a variety of
+    methods.
+  - Give guidance on how to simulate data before an experiment to help
+    with planning experiments.
+
+## Targeted audience
+
+  - Microbiologists who have expertise about their biological model but
+    might lack the statistical expertise needed to develop and fit
+    survival model in a rigorous way.
+  - Microbiologists who already have some frequentist/Bayesian
+    statistical experience but might lack specific expertise abouit
+    survival models.
 
 ## Contact
 
-Any questions of suggestions for the project can be given in the
+Any questions or suggestions for the project can be given in the
 [Issues](https://github.com/padpadpadpad/survival_curve_methods/issues)
 tab of this repository, or you can email Daniel Padfield at
 d.padfield@exeter.ac.uk.
@@ -25,6 +37,23 @@ If you want more information on survival analysis beyond the scope of
 our introductory primers and code walk-throughs, there are other
 resources available that we have found very useful.
 
-- <https://github.com/stan-dev/bayesplot/issues/233>
-- <https://lisamr.github.io/Survival_tutorial/>
-- <https://www.emilyzabor.com/tutorials/survival_analysis_in_r_tutorial.html>
+  - A [bayesplot GitHub
+    issue](https://github.com/stan-dev/bayesplot/issues/233) about
+    posterior predictive checks for right-censored data.
+  - A [detailed post by Lisa
+    Rosenthal](https://lisamr.github.io/Survival_tutorial/) about
+    survival analysis with Poisson regression.
+  - A [detailed post by Emily C.
+    Zabor](https://www.emilyzabor.com/tutorials/survival_analysis_in_r_tutorial.html)
+    about survival analysis in R.
+  - A [bookdown document by Michael
+    Foley](https://bookdown.org/mpfoley1973/survival/) entitled
+    “Survival Analysis in R” that looks interesting (I haven’t gone
+    through it yet - MB).
+  - The [CRAN Task View page about survival
+    analysis](https://cran.r-project.org/web/views/Survival.html) which
+    is a trove of information about R packages related to survival
+    analysis, helpfully organised in sections.
+  - An [arxiv paper by Brilleman et
+    al.](https://arxiv.org/abs/2002.09633) entitled “Bayesian Survival
+    Analysis Using the rstanarm R Package”.
